@@ -117,10 +117,17 @@ breakfast_price_checker_agent = Agent(
     instructions="""
     * You are a helpful assistant that takes multiple breakfast items (with ingredients and calories) and checks for the price of the ingredients.
     * Use the exa search to get an approximate price for the ingredients.
-    * In your final output prove the meal name, ingredients with calories and price for each meal.
+    * Report every price in Indian rupees (INR), using the ₹ symbol; never display dollar amounts.
+    * If a source gives a price in another currency, convert it to INR using the current exchange rate and state that the result is approximate.
+    * In your final output provide the meal name, ingredients with calories and price for each meal.
     * Use markdown and be as concise as possible.
     """,
     mcp_servers=[exa_search_mcp],
+)
+
+breakfast_price_checker_tool = breakfast_price_checker_agent.as_tool(
+    tool_name="breakfast-price-checker",
+    tool_description="Check ingredient prices and return all prices in Indian rupees (INR). This tool must be called before the final answer.",
 )
 
 # 4th Agent: Main Breakfast Advisor that glues everything together
@@ -130,15 +137,16 @@ breakfast_advisor = Agent(
     * You are a breakfast advisor. You come up with meal plans for the user based on their preferences.
     * You also calculate the calories for the meal and its ingredients.
     * Based on the breakfast meals and the calories that you get from upstream agents,
-    * Create a meal plan for the user. For each meal, give a name, the ingredients, and the calories
+    * Create a meal plan for the user. For each meal, give a name, the ingredients, the calories, and the prices in INR.
 
     Follow this workflow carefully:
     1) Use the breakfast_planner_tool to plan a a number of healthy breakfast options.
     2) Use the calorie_calculator_tool to calculate the calories for the meal and its ingredients.
-    3) Handoff the breakfast meals and the calories to the Use the Breakfast Price Checker Assistant to add the prices in the last step.
+    3) Call the breakfast-price-checker tool with the meals and calorie details.
+    4) Do not give the final answer until the price checker returns prices. Include the returned INR prices in the final answer.
 
     """,
-    tools=[breakfast_planner_tool, calorie_calculator_tool],
+    tools=[breakfast_planner_tool, calorie_calculator_tool, breakfast_price_checker_tool],
     handoff_description="""
     Create a concise breakfast recommendation based on the user's preferences. Use Markdown format.
     """,
@@ -199,16 +207,17 @@ breakfast_advisor_guarded = Agent(
     * You are a breakfast advisor. You come up with meal plans for the user based on their preferences.
     * You also calculate the calories for the meal and its ingredients.
     * Based on the breakfast meals and the calories that you get from upstream agents,
-    * Create a meal plan for the user. For each meal, give a name, the ingredients, and the calories
+    * Create a meal plan for the user. For each meal, give a name, the ingredients, the calories, and the prices in INR.
     * You only answer questions about food.
 
     Follow this workflow carefully:
     1) Use the breakfast_planner_tool to plan a a number of healthy breakfast options.
     2) Use the calorie_calculator_tool to calculate the calories for the meal and its ingredients.
-    3) Always handoff the breakfast meals and the calories to the Use the Breakfast Price Checker Assistant to add the prices in the last step.
+    3) Call the breakfast-price-checker tool with the meals and calorie details.
+    4) Do not give the final answer until the price checker returns prices. Include the returned INR prices in the final answer.
 
     """,
-    tools=[breakfast_planner_tool, calorie_calculator_tool],
+    tools=[breakfast_planner_tool, calorie_calculator_tool, breakfast_price_checker_tool],
     handoff_description="""
     Create a concise breakfast recommendation based on the user's preferences. Use Markdown format.
     """,
